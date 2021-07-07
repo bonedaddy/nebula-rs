@@ -1,5 +1,5 @@
 use std::{collections::HashMap, hash::Hash};
-
+use byteorder::{ByteOrder, BigEndian};
 use once_cell::sync::Lazy;
 
 // version 1 header
@@ -107,6 +107,9 @@ impl Header {
         let mut data_part = data[0..HEADER_LEN as usize].to_vec();
         data_part[0] = version << 4 | (typ as u8 & 0x0f);
         data_part[1] = sub_type as u8;
+        BigEndian::write_u16(&mut data_part, 0);
+        BigEndian::write_u32(&mut data_part, remote_index);
+        BigEndian::write_u64(&mut data_part, message_counter);
     }
 }
 
