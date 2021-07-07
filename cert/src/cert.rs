@@ -2,7 +2,7 @@ use std::net;
 use std::time::SystemTime;
 use bytes::Bytes;
 use protobuf;
-use crate::cert_pb;
+use crate::cert_pb::{self, RawNebulaCertificateDetails};
 use anyhow::Result;
 use protobuf::Message;
 use crate::errors::CertErrors;
@@ -40,6 +40,7 @@ pub struct NebulaCertificateDetails{
 }
 
 
+// todo(bonedaddy): this doesnt properly set teh ips, subnets, etc..
 pub fn unmarshal_nebula_certificate(data: &[u8]) -> Result<NebulaCertificate> {
 
     let raw_cert = cert_pb::RawNebulaCertificate::parse_from_bytes(data)?;
@@ -95,6 +96,16 @@ pub fn marshal_x25519_private_key(data: &[u8]) -> String {
     })
 }
 
+pub fn unmarshal_x25519_private_key(data: &[u8]) -> Result<Vec<u8>> {
+    let parsed_pem = pem::parse(data)?;
+    if parsed_pem.tag != X25519_PRIVATE_KEY_BANNER {
+        return Err(CertErrors::InvalidX25519PrivateKeyBanner.into());   
+    }
+    if parsed_pem.contents.len() != PUBLIC_KEY_LEN {
+        return Err(CertErrors::InvalidX25519KeyLength.into());
+    }
+    Ok(parsed_pem.contents.to_vec())
+}
 
 pub fn marshal_ed25519_private_key(key: ed25519_dalek::SecretKey) -> String {
     pem::encode(&pem::Pem{
@@ -103,6 +114,107 @@ pub fn marshal_ed25519_private_key(key: ed25519_dalek::SecretKey) -> String {
     })
 }
 
+pub fn unmarshal_ed25519_private_key(data: &[u8]) -> Result<ed25519_dalek::SecretKey> {
+    let parsed_pem = pem::parse(data)?;
+    if parsed_pem.tag != ED25519_PRIVATE_KEY_BANNER {
+        return Err(CertErrors::InvalidED25519PrivateKeyBanner.into());
+    }
+    if parsed_pem.contents.len() != PUBLIC_KEY_LEN {
+        return Err(CertErrors::InvalidED25519KeyLength.into());
+    }
+    Ok(ed25519_dalek::SecretKey::from_bytes(parsed_pem.contents.as_slice())?)
+}
+
+pub fn marshal_x25519_public_key(data: &[u8]) -> String {
+    pem::encode(&pem::Pem{
+        tag: X25519_PUBLIC_KEY_BANNER.to_string(),
+        contents: Vec::from(data)
+    })
+}
+
+pub fn unmarshal_x25519_public_key(data: &[u8]) -> Result<Vec<u8>> {
+    let parsed_pem = pem::parse(data)?;
+    if parsed_pem.tag != X25519_PUBLIC_KEY_BANNER {
+        return Err(CertErrors::InvalidX25519PublicKeyBanner.into());
+    }
+    if parsed_pem.contents.len() != PUBLIC_KEY_LEN {
+        return Err(CertErrors::InvalidX25519KeyLength.into());
+    }
+    return Ok(parsed_pem.contents.to_vec())
+}
+
+pub fn marshal_ed25519_public_key(key: ed25519_dalek::PublicKey) -> String {
+    pem::encode(&pem::Pem{
+        tag: ED25519_PUBLIC_KEY_BANNER.to_string(),
+        contents: Vec::from(key.to_bytes()),
+    })
+}
+
+pub fn unmarshal_ed25519_public_key(data: &[u8]) -> Result<ed25519_dalek::PublicKey> {
+    let parsed_pem = pem::parse(data)?;
+    if parsed_pem.tag != ED25519_PUBLIC_KEY_BANNER {
+        return Err(CertErrors::InvalidED25519PublicKeyBanner.into());
+    }
+    if parsed_pem.contents.len() != PUBLIC_KEY_LEN {
+        return Err(CertErrors::InvalidED25519KeyLength.into());
+    }
+    Ok(ed25519_dalek::PublicKey::from_bytes(parsed_pem.contents.as_slice())?)
+}
+
+impl NebulaCertificate {
+    pub fn get_raw_detals(&self) -> RawNebulaCertificateDetails {
+        let mut raw_details = RawNebulaCertificateDetails::new();
+        raw_details.Name = self.details.name.clone();
+        raw_details.Groups = self.details.groups.clone().into();
+        raw_details.NotBefore = self.details.not_before.timestamp();
+        raw_details.NotAfter = self.details.not_after.timestamp();
+        raw_details.PublicKey = self.details.public_key.to_vec();
+        raw_details.IsCA = self.details.is_ca;
+
+        for ip in self.details.ips.iter() {
+            let ip = match *ip {
+                net::IpAddr::V4(ipv4) => (
+                    u32::from(ipv4)
+                ),
+                net::IpAddr::V6(ipv6) => {
+                    println!("WARNING encountered ipv6 address");
+                    let ipv6_as_v4 = ipv6.to_ipv4();
+                    if ipv6_as_v4.is_none() {
+                        println!("WARNING failed to convert ipv6 address to v4");
+                        continue
+                    }
+                    let ipv6_as_v4 = ipv6_as_v4.unwrap();
+                    u32::from(ipv6_as_v4)
+                },
+            };
+            raw_details.Ips.push(ip);
+        }
+
+        for subnet in self.details.subnets.iter() {
+            let subnet = match *subnet {
+                net::IpAddr::V4(ipv4) => (
+                    u32::from(ipv4)
+                ),
+                net::IpAddr::V6(ipv6) => {
+                    println!("WARNING encountered ipv6 subnet");
+                    let ipv6_as_v4 = ipv6.to_ipv4();
+                    if ipv6_as_v4.is_none() {
+                        println!("WARNING failed to convert ipv6 subnet to v4");
+                        continue
+                    }
+                    let ipv6_as_v4 = ipv6_as_v4.unwrap();
+                    u32::from(ipv6_as_v4)
+                },
+            };
+            raw_details.Subnets.push(subnet);
+        }
+
+        raw_details.PublicKey = self.details.public_key.clone().to_vec();
+        raw_details.Issuer = self.details.issuer.clone().as_bytes().to_vec();
+
+        raw_details
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -155,13 +267,76 @@ mod tests {
         priv_key.push_str("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
         priv_key.push_str("-----END NEBULA X25519 PRIVATE KEY-----");
         let marshaled_priv_key = marshal_x25519_private_key(priv_key.as_bytes());
-        println!("marshaled: {}", marshaled_priv_key);
+        println!("marshaled x25519 priv key {}", marshaled_priv_key);
     }
     #[test]
     pub fn test_marshal_ed25519_private_key() {
         let mut csprng = OsRng{};
         let keypair: Keypair = Keypair::generate(&mut csprng);
         let marshaled_ed25519 = marshal_ed25519_private_key(keypair.secret);
-        println!("marshaled: {}", marshaled_ed25519);
+        println!("marshaled ed25519 priv key {}", marshaled_ed25519);
+    }
+    #[test]
+    pub fn test_marshal_x25519_public_key() {
+        let mut pub_key = String::new();
+        pub_key.push_str("-----BEGIN NEBULA X25519 PUBLIC KEY-----");
+        pub_key.push_str("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+        pub_key.push_str("-----END NEBULA X25519 PUBLIC KEY-----");
+        let marshaled = marshal_x25519_public_key(pub_key.as_bytes());
+        println!("marshaled x25519 pub key {}", marshaled);
+    }
+    #[test]
+    pub fn test_unmarshal_x25519_private_key() {
+        let mut priv_key = String::new();
+        priv_key.push_str("-----BEGIN NEBULA X25519 PRIVATE KEY-----");
+        priv_key.push_str("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+        priv_key.push_str("-----END NEBULA X25519 PRIVATE KEY-----");
+        let err = unmarshal_x25519_private_key(priv_key.as_bytes());
+        assert!(err.is_err() == false);
+        let key_bytes = err.unwrap();
+        let marshaled_priv_key = marshal_x25519_private_key(key_bytes.as_slice());
+        println!("marhsaled unmarshaled x25519 priv key {}", marshaled_priv_key);
+    }
+    #[test]
+    pub fn test_unmarshal_ed25519_private_key() {
+        let mut csprng = OsRng{};
+        let keypair: Keypair = Keypair::generate(&mut csprng);
+        let marshaled_ed25519 = marshal_ed25519_private_key(keypair.secret);
+        let unmarshaled_ed25519 = unmarshal_ed25519_private_key(marshaled_ed25519.as_bytes());
+        assert!(unmarshaled_ed25519.is_err() == false);
+        let unmarshaled_ed25519 = unmarshaled_ed25519.unwrap();
+        let marshaled_ed25519_2 = marshal_ed25519_private_key(unmarshaled_ed25519);
+        assert!(marshaled_ed25519 == marshaled_ed25519_2);
+    }
+    #[test]
+    pub fn test_unmarshal_x25519_public_key() {
+        let mut pub_key = String::new();
+        pub_key.push_str("-----BEGIN NEBULA X25519 PUBLIC KEY-----");
+        pub_key.push_str("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+        pub_key.push_str("-----END NEBULA X25519 PUBLIC KEY-----");        
+        let err = unmarshal_x25519_public_key(pub_key.as_bytes());
+        assert!(err.is_err() == false);
+        let unmarshaled_key_1 = err.unwrap();
+        let marshaled_key = marshal_x25519_public_key(unmarshaled_key_1.clone().as_slice());
+        let err = unmarshal_x25519_public_key(marshaled_key.as_bytes());
+        assert!(err.is_err() == false);
+        let unmarshaled_key_2 = err.unwrap();
+        assert!(unmarshaled_key_1 == unmarshaled_key_2);
+    }
+    #[test]
+    pub fn test_unmarshal_ed25519_public_key() {
+        let mut csprng = OsRng{};
+        let keypair: Keypair = Keypair::generate(&mut csprng);
+        let marshaled_ed25519 = marshal_ed25519_public_key(keypair.public);
+        let unmarshaled_ed25519_1 = unmarshal_ed25519_public_key(marshaled_ed25519.as_bytes());
+        assert!(unmarshaled_ed25519_1.is_err() == false);
+        let unmarshaled_ed25519_1 = unmarshaled_ed25519_1.unwrap();
+        let marshaled_ed25519 = marshal_ed25519_public_key(unmarshaled_ed25519_1);
+        let unmarshaled_ed25519_2 = unmarshal_ed25519_public_key(marshaled_ed25519.as_bytes());
+        assert!(unmarshaled_ed25519_2.is_err() == false);
+        let unmarshaled_ed25519_2 = unmarshaled_ed25519_2.unwrap();
+        let a = unmarshaled_ed25519_1.as_bytes();
+        let b = unmarshaled_ed25519_2.as_bytes();
+        assert!(a == b);
     }
 }
