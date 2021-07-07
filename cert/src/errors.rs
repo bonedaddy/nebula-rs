@@ -30,4 +30,16 @@ pub enum CertErrors {
     CertIsNotSelfSigned,
     #[error("certificate is expired")]
     CertIsExpired,
+    #[error("certificate has been blocked")]
+    CertIsBlocked,
+    #[error("no issuer in certificate")]
+    NoCertIssuer,
+    #[error("failed to find ca for provided certificate")]
+    NoCaIssuer,
+    #[error("ca certificate is expired")]
+    CaIsExpired,
+    #[error("certificate expires before signing certificate")]
+    CertExpiresBeforeSigningCert,
+    #[error("certificate is valid before the signing certificate")]
+    CertValidBeforeSigningCert,
 }

@@ -60,6 +60,8 @@ dependencies = [
  "anyhow",
  "bytes",
  "chrono",
+ "crypto_utils",
+ "curve25519-dalek",
  "data-encoding",
  "ed25519-dalek",
  "pem",
@@ -96,6 +98,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66c99696f6c9dd7f35d486b9d04d7e6e202aa3e8c40d553f2fdf5e7e0c6a71ef"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "crypto_utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "rand",
+ "x25519-dalek",
 ]
 
 [[package]]

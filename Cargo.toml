@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "cert"
+    "cert",
+    "crypto_utils"
 ]

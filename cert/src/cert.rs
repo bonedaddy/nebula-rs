@@ -1,20 +1,19 @@
+use crate::ca::NebulaCAPool;
 use crate::cert_pb::{self, RawNebulaCertificate, RawNebulaCertificateDetails};
 use crate::errors::CertErrors;
 use anyhow::Result;
 use bytes::Bytes;
+use chrono::prelude::*;
 use chrono::NaiveDateTime;
+use data_encoding::HEXUPPER;
 use ed25519_dalek;
+use ed25519_dalek::ed25519::signature::Signature;
 use ed25519_dalek::Signer;
 use pem;
 use protobuf::Message;
 use protobuf::{self, SingularPtrField};
-use std::iter::FromIterator;
+use ring::digest::{Context, SHA256};
 use std::net;
-use std::time::SystemTime;
-
-use data_encoding::HEXUPPER;
-use ed25519_dalek::ed25519::signature::Signature;
-use ring::digest::{Context, Digest, SHA256};
 
 pub const PUBLIC_KEY_LEN: usize = 32;
 pub const CERT_BANNER: &str = "NEBULA CERTIFICATE";
@@ -84,9 +83,7 @@ pub fn unmarshal_nebula_certificate(data: &[u8]) -> Result<NebulaCertificate> {
 
     nebula_certificate.details.name = std::mem::take(&mut details.Name);
     nebula_certificate.details.groups = std::mem::take(&mut groups);
-    nebula_certificate.details.issuer = HEXUPPER.encode(
-        details.Issuer.as_slice()
-    );
+    nebula_certificate.details.issuer = HEXUPPER.encode(details.Issuer.as_slice());
     Ok(nebula_certificate)
 }
 
@@ -174,16 +171,41 @@ pub fn unmarshal_ed25519_public_key(data: &[u8]) -> Result<ed25519_dalek::Public
     )?)
 }
 
+impl Default for NebulaCertificateDetails {
+    fn default() -> Self {
+        NebulaCertificateDetails {
+            name: "".to_string(),
+            ips: Vec::new(),
+            subnets: Vec::new(),
+            groups: Vec::new(),
+            not_after: Utc::now().naive_local(),
+            not_before: Utc::now().naive_local(),
+            public_key: Bytes::new(),
+            is_ca: false,
+            issuer: "".to_string(),
+        }
+    }
+}
+
+impl Default for NebulaCertificate {
+    fn default() -> Self {
+        NebulaCertificate {
+            details: NebulaCertificateDetails::default(),
+            signature: Bytes::new(),
+        }
+    }
+}
+
 impl NebulaCertificate {
     pub fn sign(&mut self, key: &ed25519_dalek::Keypair) -> Result<()> {
-        let raw_details = self.get_raw_detals();
+        let raw_details = self.get_raw_details();
         let raw_details_bytes = raw_details.write_to_bytes()?;
         let signature = key.sign(raw_details_bytes.as_slice());
 
         self.signature = Bytes::copy_from_slice(&signature.to_bytes()[..]);
         Ok(())
     }
-    pub fn get_raw_detals(&self) -> RawNebulaCertificateDetails {
+    pub fn get_raw_details(&self) -> RawNebulaCertificateDetails {
         let mut raw_details = RawNebulaCertificateDetails::new();
         raw_details.Name = self.details.name.clone();
         raw_details.Groups = self.details.groups.clone().into();
@@ -232,7 +254,7 @@ impl NebulaCertificate {
         raw_details
     }
     pub fn check_signature(&self, key: ed25519_dalek::PublicKey) -> Result<()> {
-        let raw_details = self.get_raw_detals();
+        let raw_details = self.get_raw_details();
         let raw_details_bytes = raw_details.write_to_bytes()?;
         let sig = &Signature::from_bytes(&self.signature.to_vec()[..])?;
         key.verify_strict(raw_details_bytes.as_slice(), sig)?;
@@ -246,10 +268,66 @@ impl NebulaCertificate {
     }
     // todo(bonedaddy): add
     // https://github.com/slackhq/nebula/blob/master/cert/cert.go#L255
-    pub fn verify(&self) {}
-    // todo(bonedaddy): add
+    // verifies a certificate is good in all respects (expiry, group, membership, signature, cert blocklist, etc..)
+    pub fn verify(&self, time: NaiveDateTime, ca_pool: &NebulaCAPool) -> Result<bool> {
+        ca_pool.is_blocklisted(self)?;
+        let signer = ca_pool.get_ca_for_cert(self)?;
+        if signer.expired(time) {
+            return Err(CertErrors::CaIsExpired.into());
+        }
+        if self.expired(time) {
+            return Err(CertErrors::CertIsExpired.into());
+        }
+        let signer_key = ed25519_dalek::PublicKey::from_bytes(
+            signer.details.public_key.clone().to_vec().as_slice(),
+        )?;
+        self.check_signature(signer_key)?;
+        self.check_root_constrains(&signer)?;
+        Ok(true)
+    }
+
+    // todo(bonedaddy): fully implement
     // https://github.com/slackhq/nebula/blob/master/cert/cert.go#L285
-    pub fn check_root_constrains(&self) {}
+    pub fn check_root_constrains(&self, signer: &NebulaCertificate) -> Result<()> {
+        // make sure this cert isnt valid before the root
+        if self.details.not_after.timestamp() < signer.details.not_after.timestamp() {
+            return Err(CertErrors::CertExpiresBeforeSigningCert.into());
+        }
+        if self.details.not_before.timestamp() > signer.details.not_before.timestamp() {
+            return Err(CertErrors::CertValidBeforeSigningCert.into());
+        }
+        /*
+        If the signer has a limited set of groups make sure the cert only contains a subset
+            if len(signer.Details.InvertedGroups) > 0 {
+                for _, g := range nc.Details.Groups {
+                    if _, ok := signer.Details.InvertedGroups[g]; !ok {
+                        return fmt.Errorf("certificate contained a group not present on the signing ca: %s", g)
+                    }
+                }
+            }
+        */
+        /*
+            If the signer has a limited set of ip ranges to issue from make sure the cert only contains a subset
+                if len(signer.Details.Ips) > 0 {
+                    for _, ip := range nc.Details.Ips {
+                        if !netMatch(ip, signer.Details.Ips) {
+                            return fmt.Errorf("certificate contained an ip assignment outside the limitations of the signing ca: %s", ip.String())
+                        }
+                    }
+                }
+        */
+        /*
+            If the signer has a limited set of subnet ranges to issue from make sure the cert only contains a subset
+                if len(signer.Details.Subnets) > 0 {
+                    for _, subnet := range nc.Details.Subnets {
+                        if !netMatch(subnet, signer.Details.Subnets) {
+                            return fmt.Errorf("certificate contained a subnet assignment outside the limitations of the signing ca: %s", subnet)
+                        }
+                    }
+                }
+        */
+        Ok(())
+    }
     // todo(bonedaddy): add
     // https://github.com/slackhq/nebula/blob/master/cert/cert.go#L450
     pub fn marhsal_json() {}
@@ -265,7 +343,7 @@ impl NebulaCertificate {
     // https://github.com/slackhq/nebula/blob/master/cert/cert.go#L421
     pub fn marshal(&self) -> Result<Vec<u8>> {
         let mut raw_cert = RawNebulaCertificate::new();
-        raw_cert.Details = SingularPtrField::from_option(Some(self.get_raw_detals()));
+        raw_cert.Details = SingularPtrField::from_option(Some(self.get_raw_details()));
         raw_cert.Signature = self.signature.to_vec();
         let raw_cert_bytes = raw_cert.write_to_bytes()?;
         Ok(raw_cert_bytes)
