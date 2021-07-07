@@ -1,5 +1,5 @@
-pub mod cert_pb;
 pub mod cert;
+pub mod cert_pb;
 pub mod errors;
 
 #[cfg(test)]
