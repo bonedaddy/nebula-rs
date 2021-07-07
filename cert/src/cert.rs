@@ -84,8 +84,9 @@ pub fn unmarshal_nebula_certificate(data: &[u8]) -> Result<NebulaCertificate> {
 
     nebula_certificate.details.name = std::mem::take(&mut details.Name);
     nebula_certificate.details.groups = std::mem::take(&mut groups);
-    // todo(bonedaddy): this needs to be hex encoded
-    // nebula_certificate.details.issuer = std::mem::take(&mut details.Issuer);
+    nebula_certificate.details.issuer = HEXUPPER.encode(
+        details.Issuer.as_slice()
+    );
     Ok(nebula_certificate)
 }
 
