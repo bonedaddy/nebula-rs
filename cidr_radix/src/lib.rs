@@ -31,6 +31,12 @@ impl CIDRTree {
             IpNet::V6(v6net) => self.contains_v6(&v6net),
         }
     }
+    pub fn v4_iter(&self) -> iprange::IpRangeIter<Ipv4Net> {
+        self.cidr4.iter()
+    }
+    pub fn v6_iter(&self) -> iprange::IpRangeIter<Ipv6Net> {
+        self.cidr6.iter()
+    }
     fn add_v4(&mut self, net: Ipv4Net) {
         self.cidr4.add(net);
     }
@@ -179,6 +185,13 @@ mod tests {
         assert!(tree.contains(IpNet::from_str("1:2:0:4:5:0:0:0/64").unwrap()) == true);
         assert!(tree.contains(IpNet::from_str("1:2:0:4:5:0:0:0/80").unwrap()) == true);
         assert!(tree.contains(IpNet::from_str("1:2:0:4:5:0:0:0/96").unwrap()) == true);
+        // todo(bonedaddy): eventually add more specific iter testing
+        for _net in tree.v4_iter() {
+        
+        }
+        for _net in tree.v6_iter() {
+            
+        }
     }
 
 }
