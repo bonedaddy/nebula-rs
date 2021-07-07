@@ -1,5 +1,7 @@
 [workspace]
 members = [
     "cert",
-    "crypto_utils"
+    "crypto_utils",
+    "nebula",
+    "cidr_radix"
 ]

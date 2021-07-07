@@ -92,6 +92,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cidr_radix"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ipnet",
+ "iprange",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -184,6 +193,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ipnet"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
+
+[[package]]
+name = "iprange"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6aae19bc97e7b1130a569f79265e1dcc36a54bbc8184c9c5582b4b9bfaf4c057"
+dependencies = [
+ "ipnet",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -211,6 +235,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "nebula"
+version = "0.1.0"
+dependencies = [
+ "protobuf",
 ]
 
 [[package]]
