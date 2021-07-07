@@ -40,7 +40,7 @@ impl NebulaCAPool {
         self.cas.write().unwrap().insert(sha256_sum, cert);
         Ok(())
     } 
-    pub fn blacklist_fingerprint(&mut self, fingerprint: String) {
+    pub fn blocklist_fingerprint(&mut self, fingerprint: String) {
         self.cert_blocklist.write().unwrap().insert(fingerprint, true);
     }  
     pub fn reset_cert_blocklist(&mut self) {
@@ -48,9 +48,8 @@ impl NebulaCAPool {
     }
     pub fn is_blocklisted(&self, cert: &NebulaCertificate) -> Result<bool> {
         let sha256_sum = cert.sha256_sum()?;
-        let result = self.cert_blocklist.read().unwrap().get(&sha256_sum);
+        let read =  self.cert_blocklist.read().unwrap();
+        let result = read.get(&sha256_sum);
         Ok(result == Some(&true))
-        // let is_set = result.is_some();
-        // Ok(is_set)
     }
 }
