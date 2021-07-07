@@ -1,6 +1,7 @@
 pub mod cert;
 pub mod cert_pb;
 pub mod errors;
+pub mod ca;
 
 #[cfg(test)]
 mod tests {

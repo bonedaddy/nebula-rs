@@ -24,4 +24,10 @@ pub enum CertErrors {
     InvalidED25519PublicKeyBanner,
     #[error("nebula certificate public does not match public key derived from private key")]
     VerifyPrivateKeyFailed,
+    #[error("expected certificate to be a ca certificate")]
+    CertIsNotCaCert,
+    #[error("cert is not self signed")]
+    CertIsNotSelfSigned,
+    #[error("certificate is expired")]
+    CertIsExpired,
 }

@@ -285,6 +285,11 @@ impl NebulaCertificate {
         let hash = HEXUPPER.encode(digest.as_ref());
         Ok(hash)
     }
+    // only intended to be used as a way of api familiarity
+    // https://github.com/slackhq/nebula/blob/master/cert/cert.go#L489
+    pub fn copy(&self) -> NebulaCertificate {
+        self.clone()
+    }
 }
 
 #[cfg(test)]
