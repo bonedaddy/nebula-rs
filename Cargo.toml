@@ -4,5 +4,6 @@ members = [
     "crypto_utils",
     "nebula",
     "cidr_radix",
-    "allow_list"
+    "allow_list",
+    "header"
 ]
