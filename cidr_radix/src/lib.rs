@@ -5,7 +5,7 @@ use std::sync::RwLock;
 use anyhow::Result;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CIDRTree {
     cidr4: iprange::IpRange<Ipv4Net>,
     cidr6: iprange::IpRange<Ipv6Net>,
@@ -190,7 +190,7 @@ mod tests {
         
         }
         for _net in tree.v6_iter() {
-            
+
         }
     }
 

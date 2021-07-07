@@ -3,5 +3,6 @@ members = [
     "cert",
     "crypto_utils",
     "nebula",
-    "cidr_radix"
+    "cidr_radix",
+    "allow_list"
 ]
