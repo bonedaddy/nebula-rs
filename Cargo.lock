@@ -205,8 +205,10 @@ dependencies = [
 name = "header"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "byteorder",
  "once_cell",
+ "thiserror",
 ]
 
 [[package]]
