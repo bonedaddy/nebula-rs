@@ -22,7 +22,38 @@ pub enum NebulaMessageType {
     //TODO These are deprecated as of 06/12/2018 - NB
     TestRemote = 6,
     TestRemoteReply = 7,
+    // NOTE this is not part of the nebula implementation in golang
+    // it's being used here as a method of determining if NebulaMessageType / NebulaMessageSubType `from` 
     Unknown = 255,
+}
+
+impl NebulaMessageType {
+    pub fn name(&self) -> &str {
+        match self {
+            NebulaMessageType::Handshake => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::Message => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::RecvError => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::LightHouse => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::Test => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::CloseTunnel => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::TestRemote => TYPE_MAP.get(self).unwrap(),
+            NebulaMessageType::TestRemoteReply => TYPE_MAP.get(self).unwrap(),
+            _ => "unknown",
+        }
+    }
+    pub fn sub_type_name(&self, sub_type: NebulaMessageSubType) -> &str {
+        match self {
+            NebulaMessageType::Handshake => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::Message => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::RecvError => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::LightHouse => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::Test => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::CloseTunnel => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::TestRemote => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            NebulaMessageType::TestRemoteReply => SUB_TYPE_MAP.get(self).unwrap().get(&sub_type).unwrap(),
+            _ => "unknown",
+        }       
+    }
 }
 
 impl From<u8> for NebulaMessageType {
@@ -190,7 +221,7 @@ mod tests {
         assert_eq!(2 + 2, 4);
     }
     #[test]
-    fn test_encode() {
+    fn test_encode_parse() {
         let expected_bytes: [u8; 16] = [0x54, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x9];
         let expected_header = Header{
             version: 5,
@@ -209,4 +240,5 @@ mod tests {
         println!("header 1 {:#?}", expected_header);
         println!("header 2 {:#?}", expected_header_2);
     }
+    // todo(bonedaddy): add more tests
 }
