@@ -5,5 +5,7 @@ members = [
     "nebula",
     "cidr_radix",
     "allow_list",
-    "header"
+    "header",
+    "noise",
+    "connection_state",
 ]

@@ -28,6 +28,9 @@ pub struct NebulaCertificate {
     pub signature: Bytes,
 }
 
+// this is missing some helper functions
+// https://github.com/slackhq/nebula/blob/c726d20578c54deb98fa438ae6ce324ab719b259/cert.go#L48
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NebulaCertificateDetails {
     pub name: String,
