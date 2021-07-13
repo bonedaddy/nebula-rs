@@ -1,0 +1,13 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.41"
+clap = "2.33.3"
+config = {path = "../config"}
+tokio = "1.7.1"
+tunnel = {path = "../tunnel"}

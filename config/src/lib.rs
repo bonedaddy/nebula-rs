@@ -119,12 +119,12 @@ pub struct StaticHost {
 
 
 impl Configuration {
-    pub fn save(&self, path: &str, as_json: bool) -> Result<()> {
+    pub fn save(&self, path: &str) -> Result<()> {
         let s = serde_yaml::to_string(self)?;
         std::fs::write(path, s)?;
         Ok(())
     }
-    pub fn load(path: &str, from_json: bool) -> Result<Configuration> {
+    pub fn load(path: &str) -> Result<Configuration> {
         let data = std::fs::read(path)?;
         let config: Configuration = serde_yaml::from_slice(data.as_slice())?;
         Ok(config)
