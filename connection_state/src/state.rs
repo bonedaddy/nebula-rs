@@ -41,7 +41,9 @@ impl<'a> ConnectionState<'a> {
 
         let ns: NoiseParams = handshake_pattern.parse()?;
         let handshake_state: HandshakeState = if initiator {
-            Builder::new(ns).psk(psk_stage, &psk).build_initiator()?
+            Builder::new(ns).local_private_key(
+                &cs.cert_state.inner.read().unwrap().private_key.clone()[..]
+            ).psk(psk_stage, &psk).build_initiator()?
         } else {
             Builder::new(ns).psk(psk_stage, &psk).build_responder()?
         };
@@ -53,8 +55,29 @@ impl<'a> ConnectionState<'a> {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use test_utils;
+    use cert::cert_state;
     #[test]
     fn test_connection_state() {
         // wip https://github.com/slackhq/nebula/blob/c726d20578c54deb98fa438ae6ce324ab719b259/connection_state.go#L24
+        let res = test_utils::create_test_ca_cert_client_cert();
+        assert!(res.is_err() == false);
+        let (
+            mut client_cert,
+            client_cert_x25519_public_key,
+            client_cert_x25519_secret_key,
+            client_cert_ed25519_keypair,
+            ca_cert,
+            ca_keypair,
+        ) = res.unwrap();
+        let cs = CertState::new(&mut client_cert, client_cert_ed25519_keypair.to_bytes().to_vec()).unwrap();
+        let conn_state = ConnectionState::new(
+            &cs,
+            true,
+            "Noise_XX_25519_AESGCM_SHA512".to_string(),
+            Bytes::from("".to_string()),
+            0,
+        ).unwrap();
     }
 }

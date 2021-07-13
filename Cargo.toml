@@ -8,4 +8,7 @@ members = [
     "header",
     "noise",
     "connection_state",
+    "test_utils",
+    "tunnel",
+    "config"
 ]
