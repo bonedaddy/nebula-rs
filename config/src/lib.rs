@@ -1,5 +1,4 @@
-use core::slice::SlicePattern;
-
+use simplelog::*;
 use serde::{Serialize, Deserialize};
 use anyhow::Result;
 
@@ -130,6 +129,15 @@ impl Configuration {
         let config: Configuration = serde_yaml::from_slice(data.as_slice())?;
         Ok(config)
     }
+    pub fn setup_logger(&self) -> Result<()> {
+        TermLogger::init(
+            LevelFilter::Info,
+            ConfigBuilder::new().set_location_level(LevelFilter::Info).build(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        )?;
+        return Ok(());        
+    }
 }
 
 // todo(bonedaddy): implement local range https://github.com/slackhq/nebula/blob/c726d20578c54deb98fa438ae6ce324ab719b259/examples/config.yml#L117
@@ -158,16 +166,7 @@ impl Default for Configuration {
                 interval: 60,
                 hosts: [].into(),
             },
-            tunnel: Tunnel {
-                disabled: false,
-                device_name: "nebula-1".to_string(),
-                drop_local_broadcast: false,
-                drop_multicast: false,
-                tx_queue: 500,
-                mtu: 1300,
-                safe_routes: None,
-                unsafe_routes: None,
-            },
+            tunnel: Tunnel::default(),
             static_host_map: StaticHostMap{
                 hosts: [StaticHost{
                     nebula_ip: "172.16.254.1".to_string(),
@@ -178,7 +177,20 @@ impl Default for Configuration {
     }
 }
 
-
+impl Default for Tunnel {
+    fn default() -> Self {
+            Tunnel {
+                disabled: false,
+                device_name: "nebula-1".to_string(),
+                drop_local_broadcast: false,
+                drop_multicast: false,
+                tx_queue: 500,
+                mtu: 1300,
+                safe_routes: None,
+                unsafe_routes: None,
+            }
+    }
+}
 
 
 #[cfg(test)]

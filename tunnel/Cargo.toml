@@ -7,5 +7,8 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.41"
-tokio = "1.7.1"
+tokio = {version = "1.7.1", features = ["full"]}
 tokio-tun = "0.3.13"
+config = {path = "../config" }
+simplelog = "0.10.0"
+log = "0.4.14"
