@@ -9,5 +9,10 @@ edition = "2018"
 anyhow = "1.0.41"
 clap = "2.33.3"
 config = {path = "../config"}
+crossbeam = "0.8.1"
+crossbeam-channel = "0.5.1"
+crossbeam-utils = "0.8.5"
+signal-hook = "0.3.9"
 tokio = "1.7.1"
 tunnel = {path = "../tunnel"}
+utils = {path = "../utils"}

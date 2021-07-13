@@ -1,0 +1,33 @@
+---
+pki:
+  ca_cert: /etc/nebula/ca.crt
+  node_cert: /etc/nebula/node.crt
+  node_key: /etc/nebula/node.key
+listen:
+  host: 127.0.0.1
+  port: 4243
+  batch: 64
+  read_buffer: 10485760
+  write_buffer: 10485760
+punchy:
+  punch: true
+  respond: false
+  delay: 0
+lighthouse:
+  am_lighthouse: true
+  interval: 60
+  hosts: []
+tunnel:
+  disabled: false
+  device_name: nebula-1
+  drop_local_broadcast: false
+  drop_multicast: false
+  tx_queue: 500
+  mtu: 1300
+  safe_routes: ~
+  unsafe_routes: ~
+static_host_map:
+  hosts:
+    - nebula_ip: 172.16.254.1
+      real_ips:
+        - "127.0.0.1:4243"

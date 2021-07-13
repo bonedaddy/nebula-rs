@@ -11,5 +11,6 @@ members = [
     "test_utils",
     "tunnel",
     "config",
-    "cli"
+    "cli",
+    "utils"
 ]
